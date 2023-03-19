@@ -1,164 +1,166 @@
-;;==========================================================
-;;  _____       _     _       _       _       _ _         _ 
-;; /  ___|     | |   (_)     ( )     (_)     (_) |       | |
-;; \ `--.  __ _| |__  _ _ __ |/ ___   _ _ __  _| |_   ___| |
-;;  `--. \/ _` | '_ \| | '_ \  / __| | | '_ \| | __| / _ \ |
-;; /\__/ / (_| | |_) | | | | | \__ \ | | | | | | |_ |  __/ |
-;; \____/ \__,_|_.__/|_|_| |_| |___/ |_|_| |_|_|\__(_)___|_|
-;;
-;;==========================================================                                                         
-
-
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 (package-initialize)
+(unless package-archive-contents
+  (package-refresh-contents))
 
-;; === use-package settings ===
-;; ensure that every package is installed
-(require 'use-package-ensure)
+;; ===== Basic settings  =====
+;; Font
+(add-to-list 'default-frame-alist
+             '(font . "Inconsolata Nerd Font-23"))
+
+
+;; UI
+(setq inhibit-startup-message t)
+(setq initial-scratch-message ";; Happy Hacking")
+
+(scroll-bar-mode -1)        ; Disable visible scrollbar
+(tool-bar-mode -1)          ; Disable the toolbar
+(tooltip-mode -1)           ; Disable tooltips
+(set-fringe-mode 10)        ; Give some breathing room
+
+(menu-bar-mode -1)            ; Disable the menu bar
+
+;; Set up the visible bell
+(setq visible-bell t)
+
+(setq column-number-mode t)
+
+;; Fancy titlebar for MacOS
+(add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+(add-to-list 'default-frame-alist '(ns-appearance . dark))
+(setq ns-use-proxy-icon  nil)
+(setq frame-title-format nil)
+
+;; Scroll one line at a time (less "jumpy" than defaults)
+(setq mouse-wheel-scroll-amount '(1 ((shift) . 1))) ;; one line at a time
+(setq mouse-wheel-progressive-speed nil) ;; don't accelerate scrolling
+(setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
+(setq scroll-step 1) ;; keyboard scroll one line at a time
+
+;; Backup files
+(setq backup-directory-alist '(("." . "~/.myEmacsBackups")))
+
+;; Makes *scratch* empty.
+;;(setq initial-scratch-message "")
+
+;; Removes *scratch* from buffer after the mode has been set.
+;;(defun remove-scratch-buffer ()
+;;  (if (get-buffer "*scratch*")
+;;      (kill-buffer "*scratch*")))
+;;(add-hook 'after-change-major-mode-hook 'remove-scratch-buffer)
+
+;; Removes *messages* from the buffer.
+(setq-default message-log-max nil)
+(kill-buffer "*Messages*")
+
+;; Removes *Completions* from buffer after you've opened a file.
+(add-hook 'minibuffer-exit-hook
+	  '(lambda ()
+             (let ((buffer "*Completions*"))
+               (and (get-buffer buffer)
+                    (kill-buffer buffer)))))
+
+;; Don't show *Buffer list* when opening multiple files at the same time.
+(setq inhibit-startup-buffer-menu t)
+
+;; Show only one active window when opening multiple files at the same time.
+(add-hook 'window-setup-hook 'delete-other-windows)
+
+
+;; No more typing the whole yes or no. Just y or n will do.
+(fset 'yes-or-no-p 'y-or-n-p)
+;; ===========================
+
+
+
+;; ===== Package manager  =====
+;; Initialize use-package on non-Linux platforms
+(unless (package-installed-p 'use-package)
+  (package-install 'use-package))
+
+(require 'use-package)
 (setq use-package-always-ensure t)
+;; ============================
 
-(use-package auto-package-update
+
+
+;; ===== Autocomplete =====
+(use-package company
+  :init
+  (setq company-minimum-prefix-length 2)
+  (setq company-idle-delay 0)
   :config
-  (auto-package-update-maybe))
+  (global-company-mode 1)
+  (setq lsp-headerline-breadcrumb-enable nil)
+  (setq lsp-completion-provider :capf))
+
+;; (use-package company-box
+;;   :hook (company-mode . company-box-mode))
+;; ========================
 
 
-;; === Themes ===
+
+;; ===== Theme =====
 (use-package doom-themes
   :config
-  (setq doom-themes-enable-bold t
-        doom-themes-enable-italic t)
-  (load-theme 'doom-vibrant t)
+  ;; Global settings (defaults)
+  (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+        doom-themes-enable-italic t) ; if nil, italics is universally disabled
+  ;;(load-theme 'doom-one-light t)
+
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
+  ;; Enable custom neotree theme (all-the-icons must be installed!)
+  ;;(doom-themes-neotree-config)
   ;; or for treemacs users
   ;;(setq doom-themes-treemacs-theme "doom-atom") ; use "doom-colors" for less minimal icon theme
   ;;(doom-themes-treemacs-config)
   ;; Corrects (and improves) org-mode's native fontification.
-  (doom-themes-org-config)) 
- 
-;; (use-package monokai-theme
-;;   :config
-;;   (load-theme 'monokai t))
+  (doom-themes-org-config))
 
-(use-package all-the-icons
-  :if (display-graphic-p))
+(use-package all-the-icons)
 
-;; UI Config
-(scroll-bar-mode -1)
-(tool-bar-mode   -1)
-(tooltip-mode    -1)
-(setq show-paren-delay 0)
-(show-paren-mode  1)
-;; autocomplete paired brackets
+;; modeline
+(use-package doom-modeline
+  :init (doom-modeline-mode 1)
+  :config (setq doom-modeline-height 19))
+
+(use-package kaolin-themes
+  :config
+  (load-theme 'kaolin-bubblegum t))
+  ;;(kaolin-treemacs-theme))
+;; =================
+
+
+
+;; ===== Extra =====
+;; Make ESC quit prompts
+(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+
 (electric-pair-mode 1)
-(setq scroll-step 1)
-(setq ring-bell-function 'ignore)
+(delete-selection-mode 1)
 
-(global-set-key (kbd "S-C-<left>") 'shrink-window-horizontally)
-(global-set-key (kbd "S-C-<right>") 'enlarge-window-horizontally)
-(global-set-key (kbd "S-C-<down>") 'shrink-window)
-(global-set-key (kbd "S-C-<up>") 'enlarge-window)
+(use-package rainbow-delimiters
+  :hook (prog-mode . rainbow-delimiters-mode))
 
-;; Splash Screen
-(setq inhibit-startup-screen t)
-(setq initial-scratch-message ";; Happy Hacking")
-
-;; Org Mode
-(use-package org-bullets
-  :config
-  (add-hook 'org-mode-hook
-	    (lambda () (org-bullets-mode 1))))
-
-;; indentation
-(setq org-startup-indented t
-      org-src-tab-acts-natively t)
-
-;; Wrap the long lines
-(global-visual-line-mode t)
-
-;; Change the font
-(add-to-list 'default-frame-alist '(font . "DejaVu Sans Mono-19"))
-(set-face-attribute 'default t :font "DejaVu Sans Mono-19")
-
-
-;; === macOS Stuff ===
-(add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
-(add-to-list 'default-frame-alist '(ns-appearance . light))
-(setq ns-use-proxy-icon  nil)
-(setq frame-title-format nil)
-(setq frame-resize-pixelwise t) ; fix the gap when full screen
-(setq mac-command-modifier 'control)
-(setq mac-option-modifier 'meta)
-
-;; === Company ===
-(use-package company
-  :config
-  (add-hook 'after-init-hook 'global-company-mode)
-  (setq company-idle-delay 0.1)
-  (setq company-minimum-prefix-length 1))
-
-;; === which-key ===
 (use-package which-key
-    :config
-    (which-key-mode))
-
-;; === VTerm ===
-(use-package vterm)
-
-;; === Eglot ===
-(use-package eglot
+  :defer 0
+  :diminish which-key-mode
   :config
-  (add-hook 'java-mode-hook 'eglot-ensure)
-  (add-hook 'c-mode-hook 'eglot-ensure)
-  (add-hook 'c++-mode-hook 'eglot-ensure)
-  (add-hook 'eglot-managed-mode-hook
-            (lambda ()
-              ;; Show flymake diagnostics first.
-              (setq eldoc-documentation-functions
-                    (cons #'flymake-eldoc-function
-                          (remove #'flymake-eldoc-function eldoc-documentation-functions)))
-              ;; Show all eldoc feedback.
-              (setq eldoc-documentation-strategy #'eldoc-documentation-compose)))
-  (setq eldoc-echo-area-use-multiline-p nil))
+  (which-key-mode)
+  (setq which-key-idle-delay 1))
+;; =================
 
-;; ~~~ fixing jdtls's '-data' argument ~~~
-(with-eval-after-load 'eglot
-  (let ((cache
-         (expand-file-name (md5 (project-root (eglot--current-project)))
-                           (locate-user-emacs-file
-                            "eglot-eclipse-jdt-cache"))))
-    (add-to-list 'eglot-server-programs
-                 `(java-mode "jdtls" "-data" ,cache))))
-
-;; === ivy ===
-(use-package ivy
-  :defer 0.1
-  :config
-  (ivy-mode 1)
+;; ===== Ivy =====
+(use-package counsel
+  :init
   (setq ivy-use-virtual-buffers t)
   (setq ivy-count-format "(%d/%d) ")
-  (global-set-key (kbd "C-x b") 'ivy-switch-buffer)
-  (global-set-key (kbd "C-c v") 'ivy-push-view)
-  (global-set-key (kbd "C-c V") 'ivy-pop-view)
-  (setq ivy-initial-inputs-alist nil))
-
-;; === counsel ===
-(use-package counsel
-  :after ivy
   :config
-  (counsel-mode)
-  (global-set-key (kbd "C-c c") 'counsel-compile)
-  (global-set-key (kbd "C-c g") 'counsel-git)
-  (global-set-key (kbd "C-c j") 'counsel-git-grep)
-  (global-set-key (kbd "C-c L") 'counsel-git-log)
-  (global-set-key (kbd "C-c k") 'counsel-rg)
-  (global-set-key (kbd "C-c m") 'counsel-linux-app)
-  (global-set-key (kbd "C-c n") 'counsel-fzf)
-  (global-set-key (kbd "C-x l") 'counsel-locate)
-  (global-set-key (kbd "C-c J") 'counsel-file-jump)
-  (global-set-key (kbd "C-S-o") 'counsel-rhythmbox)
-  (global-set-key (kbd "C-c w") 'counsel-wmctrl)
+  (global-set-key (kbd "C-s") 'swiper-isearch)
+  (global-set-key (kbd "C-c a") 'swiper-all)
+  (global-set-key (kbd "C-c s") 'counsel-rg)
   (global-set-key (kbd "M-x") 'counsel-M-x)
   (global-set-key (kbd "C-x C-f") 'counsel-find-file)
   (global-set-key (kbd "M-y") 'counsel-yank-pop)
@@ -167,65 +169,94 @@
   (global-set-key (kbd "<f1> l") 'counsel-find-library)
   (global-set-key (kbd "<f2> i") 'counsel-info-lookup-symbol)
   (global-set-key (kbd "<f2> u") 'counsel-unicode-char)
-  (global-set-key (kbd "<f2> j") 'counsel-set-variable))
+  (global-set-key (kbd "<f2> j") 'counsel-set-variable)
+  (global-set-key (kbd "C-x b") 'ivy-switch-buffer)
+  (global-set-key (kbd "C-c v") 'ivy-push-view)
+  (global-set-key (kbd "C-c V") 'ivy-pop-view)
+  (global-set-key (kbd "C-c n") 'counsel-fzf)
+  (global-set-key (kbd "C-x l") 'counsel-locate)
+  (global-set-key (kbd "C-c J") 'counsel-file-jump))
 
 (use-package ivy-rich
   :after ivy
-  :config
-  (ivy-rich-mode 1)
-  (setcdr (assq t ivy-format-functions-alist) #'ivy-format-function-line))
+  :init
+  (ivy-rich-mode 1))
+;; ===============
 
-(use-package swiper
-  :after ivy
-  :config
-  (global-set-key (kbd "C-s") 'swiper-isearch))
 
-(use-package doom-modeline
-  :init (doom-modeline-mode 1)
-  :config
-  (setq doom-modeline-major-mode-color-icon t))
 
-;; === Treesitter ===
+;; ===== LSP =====
+(use-package lsp-mode
+  :init
+  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+  (setq lsp-keymap-prefix "C-c l")
+  :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
+	 (c-mode . lsp-deferred)
+	 (racket-mode . lsp-deferred)
+         ;; if you want which-key integration
+         (lsp-mode . lsp-enable-which-key-integration))
+  :commands (lsp lsp-deferred))
+
+(use-package lsp-ui :commands lsp-ui-mode)
+;; if you are helm user
+;;(use-package helm-lsp :commands helm-lsp-workspace-symbol)
+;; if you are ivy user
+(use-package lsp-ivy :commands lsp-ivy-workspace-symbol)
+;;(use-package lsp-treemacs :commands lsp-treemacs-errors-list)
+
+;; optionally if you want to use debugger
+;;(use-package dap-mode)
+;; (use-package dap-LANGUAGE) to load the dap adapter for your language
+
+
+(setq gc-cons-threshold 100000000)
+(setq read-process-output-max (* 1024 1024)) ;; 1mb
+;; ===============
+
+;; ===== Languages =====
+;; Racket
+(use-package racket-mode)
+
+
+;; Treesitter
 (use-package tree-sitter
   :config
-  (global-tree-sitter-mode))
-
-(use-package tree-sitter-langs
-  :config
+  (global-tree-sitter-mode)
   (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
 
-;; === Flycheck ===
-(use-package flycheck)
+(use-package tree-sitter-langs)
+;; =====================
 
-;; <3 <3 <3 Having fun with Alexia <3 <3 <3
-(use-package fireplace)
-(use-package snow)
 
-;; === LSP Performance ===
-(setq read-process-output-max (* 1024 1024)) ;; 1mb
-(setq gc-cons-threshold 100000000)
 
-;; === Projectile ===
-(use-package projectile
-   :config
-   (projectile-mode +1))
+;; ===== Org =====
+(with-eval-after-load 'org       
+  (setq org-startup-indented t) ; Enable `org-indent-mode' by default
+  (add-hook 'org-mode-hook #'visual-line-mode))
 
-;; === Ace-window ===
-;; ace-window
-(use-package ace-window
+(use-package visual-fill-column
   :config
-  (global-set-key (kbd "M-o") 'ace-window))
+  ;;(setq visual-fill-column-width 100)
+  (setq-default visual-fill-column-center-text t)
+  (add-hook 'visual-line-mode-hook #'visual-fill-column-mode))
 
-;; === Native-comp ===
+(use-package org-bullets
+  :config
+  (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1))))
+;; ===============
 
 
-;; ===== END =====
+
+;; ===== Terminal =====
+(use-package vterm)
+;; ====================
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages '(snow fireplace use-package)))
+ '(package-selected-packages '(use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
