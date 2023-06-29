@@ -7,7 +7,7 @@
 ;; ===== Basic settings  =====
 ;; Font
 (add-to-list 'default-frame-alist
-             '(font . "Inconsolata Nerd Font-23"))
+             '(font . "Anonymous Pro-23"))
 
 
 ;; UI
@@ -41,15 +41,6 @@
 ;; Backup files
 (setq backup-directory-alist '(("." . "~/.myEmacsBackups")))
 
-;; Makes *scratch* empty.
-;;(setq initial-scratch-message "")
-
-;; Removes *scratch* from buffer after the mode has been set.
-;;(defun remove-scratch-buffer ()
-;;  (if (get-buffer "*scratch*")
-;;      (kill-buffer "*scratch*")))
-;;(add-hook 'after-change-major-mode-hook 'remove-scratch-buffer)
-
 ;; Removes *messages* from the buffer.
 (setq-default message-log-max nil)
 (kill-buffer "*Messages*")
@@ -67,12 +58,36 @@
 ;; Show only one active window when opening multiple files at the same time.
 (add-hook 'window-setup-hook 'delete-other-windows)
 
-
 ;; No more typing the whole yes or no. Just y or n will do.
 (fset 'yes-or-no-p 'y-or-n-p)
+
+(use-package mini-frame
+  :init
+  (mini-frame-mode)
+  :config
+  (custom-set-variables
+   '(mini-frame-show-parameters
+     '((top . 1)
+       (width . 0.75)
+       (left . 0.5)))))
+  
+
 ;; ===========================
 
 
+;; =========== Shortcuts ===========
+;; newline-without-break-of-line
+(defun newline-without-break-of-line ()
+  "1. move to end of the line.
+  2. insert newline with index"
+
+  (interactive)
+  (let ((oldpos (point)))
+    (end-of-line)
+    (newline-and-indent)))
+
+(global-set-key (kbd "<C-return>") 'newline-without-break-of-line)
+;; =================================
 
 ;; ===== Package manager  =====
 ;; Initialize use-package on non-Linux platforms
@@ -84,30 +99,125 @@
 ;; ============================
 
 
+;; ===== LSP =====
+;; Eglot
+(use-package eglot
+  :config
+  (add-hook 'prog-mode-hook #'eglot-ensure))
+
 
 ;; ===== Autocomplete =====
-(use-package company
+(use-package corfu
+  ;; Optional customizations
+  :custom
+  ;; (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  (corfu-auto t)                 ;; Enable auto completion
+  ;; (corfu-separator ?\s)          ;; Orderless field separator
+  ;; (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+  (corfu-quit-no-match 'separator)
+  (corfu-auto-delay 0.25)
+  (corfu-auto-prefix 3)
+  ;;(corfu-echo-mode)
+  ;; (corfu-preview-current nil)    ;; Disable current candidate preview
+  ;; (corfu-preselect 'prompt)      ;; Preselect the prompt
+  ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
+  ;; (corfu-scroll-margin 5)        ;; Use scroll margin
+
+  ;; Recommended: Enable Corfu globally.
+  ;; This is recommended since Dabbrev can be used globally (M-/).
   :init
-  (setq company-minimum-prefix-length 2)
-  (setq company-idle-delay 0)
-  :config
-  (global-company-mode 1)
-  (setq lsp-headerline-breadcrumb-enable nil)
-  (setq lsp-completion-provider :capf))
+  (global-corfu-mode)
+  (corfu-popupinfo-mode)
+  (corfu-history-mode))
 
-;; (use-package company-box
-;;   :hook (company-mode . company-box-mode))
-;; ========================
+;; (use-package kind-icon
+;;   :ensure t
+;;   :after corfu
+;;   :custom
+;;   (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
+;;   :config
+;;   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+
+
+;; Optionally use the `orderless' completion style.
+(use-package orderless
+  :init
+  ;; Configure a custom style dispatcher (see the Consult wiki)
+  ;; (setq orderless-style-dispatchers '(+orderless-dispatch)
+  ;;       orderless-component-separator #'orderless-escapable-split-on-space)
+  (setq completion-styles '(orderless basic)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles . (partial-completion))))))
+
+;; Add extensions
+(use-package cape
+  ;; Bind dedicated completion commands
+  ;; Alternative prefix keys: C-c p, M-p, M-+, ...
+  :bind (("C-c p p" . completion-at-point) ;; capf
+         ("C-c p t" . complete-tag)        ;; etags
+         ("C-c p d" . cape-dabbrev)        ;; or dabbrev-completion
+         ("C-c p h" . cape-history)
+         ("C-c p f" . cape-file)
+         ("C-c p k" . cape-keyword)
+         ("C-c p s" . cape-symbol)
+         ("C-c p a" . cape-abbrev)
+         ("C-c p l" . cape-line)
+         ("C-c p w" . cape-dict)
+         ("C-c p \\" . cape-tex)
+         ("C-c p _" . cape-tex)
+         ("C-c p ^" . cape-tex)
+         ("C-c p &" . cape-sgml)
+         ("C-c p r" . cape-rfc1345))
+  :init
+  ;; Add `completion-at-point-functions', used by `completion-at-point'.
+  ;; NOTE: The order matters!
+  ;;(add-to-list 'completion-at-point-functions #'cape-dabbrev)
+  (add-to-list 'completion-at-point-functions #'cape-file)
+  (add-to-list 'completion-at-point-functions #'cape-elisp-block)
+  (add-to-list 'completion-at-point-functions #'cape-history)
+  ;;RCS(add-to-list 'completion-at-point-functions #'cape-keyword)
+  ;;(add-to-list 'completion-at-point-functions #'cape-tex)
+  ;;(add-to-list 'completion-at-point-functions #'cape-sgml)
+  ;;(add-to-list 'completion-at-point-functions #'cape-rfc1345)
+  ;;(add-to-list 'completion-at-point-functions #'cape-abbrev)
+  ;;(add-to-list 'completion-at-point-functions #'cape-dict)
+  ;;(add-to-list 'completion-at-point-functions #'cape-symbol)
+  ;;(add-to-list 'completion-at-point-functions #'cape-line)
+)
+
+;; ===== Configure Eglot =====
+;; Undo the Eglot modification of completion-category-defaults
+(with-eval-after-load 'eglot
+   (setq completion-category-defaults nil))
+
+;; Enable cache busting, depending on if your server returns
+;; sufficiently many candidates in the first place.
+(advice-add 'eglot-completion-at-point :around #'cape-wrap-buster)
+
+;; ;; A few more useful configurations...
+;; (use-package emacs
+;;   :init
+;;   ;; TAB cycle if there are only few candidates
+;;   (setq completion-cycle-threshold 3)
+
+;;   ;; Emacs 28: Hide commands in M-x which do not apply to the current mode.
+;;   ;; Corfu commands are hidden, since they are not supposed to be used via M-x.
+;;   ;; (setq read-extended-command-predicate
+;;   ;;       #'command-completion-default-include-p)
+
+;;   ;; Enable indentation+completion using the TAB key.
+;;   ;; `completion-at-point' is often bound to M-TAB.
+;;   (setq tab-always-indent 'complete))
 
 
 
-;; ===== Theme =====
+;; ===== Themes =====
 (use-package doom-themes
   :config
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  ;;(load-theme 'doom-one-light t)
+  ;;(load-theme 'doom-material-dark t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
@@ -119,18 +229,27 @@
   ;; Corrects (and improves) org-mode's native fontification.
   (doom-themes-org-config))
 
-(use-package all-the-icons)
-
 ;; modeline
 (use-package doom-modeline
-  :init (doom-modeline-mode 1)
-  :config (setq doom-modeline-height 19))
+  :init (doom-modeline-mode 1))
+  ;; :config (setq doom-modeline-height 21))
 
-(use-package kaolin-themes
+(use-package kaolin-themes)
+;;:config
+;;(load-theme 'kaolin-valley-light t))
+;;(kaolin-treemacs-theme))
+
+(use-package catppuccin-theme)
+  ;; :config
+  ;; (load-theme 'catppuccin :no-confirm))
+  ;;(setq catppuccin-flavor 'latte)
+  ;;(catppuccin-reload))
+
+(use-package ef-themes
   :config
-  (load-theme 'kaolin-bubblegum t))
-  ;;(kaolin-treemacs-theme))
-;; =================
+  (load-theme 'ef-summer t))
+
+;; ===================================
 
 
 
@@ -184,38 +303,12 @@
 ;; ===============
 
 
-
-;; ===== LSP =====
-(use-package lsp-mode
-  :init
-  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
-  (setq lsp-keymap-prefix "C-c l")
-  :hook (;; replace XXX-mode with concrete major-mode(e. g. python-mode)
-	 (c-mode . lsp-deferred)
-	 (racket-mode . lsp-deferred)
-         ;; if you want which-key integration
-         (lsp-mode . lsp-enable-which-key-integration))
-  :commands (lsp lsp-deferred))
-
-(use-package lsp-ui :commands lsp-ui-mode)
-;; if you are helm user
-;;(use-package helm-lsp :commands helm-lsp-workspace-symbol)
-;; if you are ivy user
-(use-package lsp-ivy :commands lsp-ivy-workspace-symbol)
-;;(use-package lsp-treemacs :commands lsp-treemacs-errors-list)
-
-;; optionally if you want to use debugger
-;;(use-package dap-mode)
-;; (use-package dap-LANGUAGE) to load the dap adapter for your language
-
-
-(setq gc-cons-threshold 100000000)
-(setq read-process-output-max (* 1024 1024)) ;; 1mb
-;; ===============
-
 ;; ===== Languages =====
 ;; Racket
 (use-package racket-mode)
+
+;; Rust
+(use-package rust-mode)
 
 
 ;; Treesitter
@@ -227,7 +320,20 @@
 (use-package tree-sitter-langs)
 ;; =====================
 
+;; ===== Web Mode =====
+(use-package web-mode
+  :mode
+  (
+   "\\.html?\\'"
+   "\\.php?\\'"
+   )
+  :config
+  (setq web-mode-enable-auto-closing t
+	web-mode-enable-auto-opening t
+	web-mode-enable-auto-pairing t
+	web-mode-auto-close-style 2))
 
+;; ====================
 
 ;; ===== Org =====
 (with-eval-after-load 'org       
@@ -246,17 +352,26 @@
 ;; ===============
 
 
-
 ;; ===== Terminal =====
 (use-package vterm)
 ;; ====================
+
+
+
+;; Screen Saver
+(require 'zone)
+(zone-when-idle 120) ;; in seconds
+
+
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages '(use-package)))
+ '(mini-frame-show-parameters '((top . 10) (width . 0.7) (left . 0.5)))
+ '(package-selected-packages
+   '(ef-themes mini-frame catppuccin-theme web-mode rust-mode kind-icon use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
